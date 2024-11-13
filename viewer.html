@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>EPUB.js Basic Example with Search</title>
+
+    <!-- Load JSZip and EPUB.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #viewer {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 500px;
+            overflow-y: scroll;
+        }
+
+        #searchResults {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>EPUB.js Basic Example with Search</h1>
+<input type="text" id="searchInput" placeholder="Search text..."/>
+<button id="searchButton">Search</button>
+
+<div id="viewer"></div>
+<div id="searchResults"></div>
+
+<script>
+    // Initialize the book and rendering viewer
+    var book = ePub("./static/book.epub");
+    var rendition = book.renderTo("viewer", {
+        method: "default",
+        width: "100%",
+        height: "100%",
+    });
+
+    // Display the first page when the book is ready
+    book.ready.then(function () {
+        rendition.display();
+
+        // Set up search functionality on button click
+        document.getElementById("searchButton").onclick = function () {
+            var searchText = document.getElementById("searchInput").value;
+            searchTextInBook(searchText, book);
+        };
+    });
+
+    // Function to search text in the book and display results
+    async function searchTextInBook(searchText, book) {
+        console.log("searchTextInBook got fired");
+        const searchResults = [];
+
+        // Wait for the book to load its spine items
+        await book.loaded.spine;
+
+        // Iterate over spine items (sections)
+        for (const section of book.spine.spineItems) {
+            if (section.isNav) {
+                // Skip navigation items
+                continue;
+            }
+
+            // Wait for the section to load
+            await section.load(book.load.bind(book));
+
+            // Use the `find` method to search within the section
+            const searchResultsInSection = section.find(searchText?.trim());
+
+            await section.unload();
+
+            if (searchResultsInSection.length > 0) {
+                // Store the CFI for each result found in this section
+                searchResultsInSection.forEach((result) => {
+                    searchResults.push({
+                        cfi: result.cfi,
+                        excerpt: result.excerpt, // assuming the `find` method returns an excerpt
+                    });
+                });
+            }
+        }
+
+        // Display the results in the #searchResults div
+        displaySearchResults(searchResults);
+    }
+
+    // Function to append search results to the DOM
+    function displaySearchResults(results) {
+        const resultsContainer = document.getElementById("searchResults");
+        resultsContainer.innerHTML = ""; // Clear previous results
+
+        if (results.length > 0) {
+            const resultList = document.createElement("ul");
+
+            results.forEach((result) => {
+                const resultItem = document.createElement("li");
+                resultItem.innerHTML = `
+              <strong>Excerpt:</strong> ${result.excerpt}<br />
+              <strong>CFI:</strong> ${result.cfi}
+            `;
+                resultItem.onclick = function () {
+                    // Navigate to the location in the book when clicked
+                    rendition.display(result.cfi);
+                };
+                resultList.appendChild(resultItem);
+            });
+
+            resultsContainer.appendChild(resultList);
+        } else {
+            resultsContainer.innerHTML = "<h3>No results found</h3>";
+        }
+    }
+</script>
+</body>
+</html>
