@@ -48,6 +48,7 @@
 <script>
     // Initialize the book and rendering viewer
     var book = ePub("./static/book.epub");
+    console.log(book)
     var rendition = book.renderTo("viewer", {
         method: "default",
         width: "100%",
@@ -72,7 +73,7 @@
 
         // Wait for the book to load its spine items
         await book.loaded.spine;
-
+        console.log("===>","here before loop")
         // Iterate over spine items (sections)
         for (const section of book.spine.spineItems) {
             if (section.isNav) {
@@ -98,6 +99,7 @@
                 });
             }
         }
+        console.log("after loop",searchResults)
 
         // Display the results in the #searchResults div
         displaySearchResults(searchResults);
